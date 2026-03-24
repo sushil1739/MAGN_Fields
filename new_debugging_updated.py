@@ -12,27 +12,51 @@ ROOT.gStyle.SetOptStat(0)
 ROOT.TH1.AddDirectory(False)
 ROOT.TH2.AddDirectory(False)
 
-def inside_tms(x, y, z, only_thin_section = False):
-    """ Returns true if x,y,z are inside the TMS
-    Currently rough estimates of the positions """
-    is_inside = True
-    if not -3500 < x < 3500: is_inside = False
-    if not -3700 < y < 1000: is_inside = False
+def inside_tms(x, y, z, only_thin_section=False):
+    """
+    Returns True if (x,y,z) is inside the TMS (geometry-aligned)
+    Units: mm
+    """
+
+    # X bounds (TMS centered ~ +1848 mm)
+    if not (0 < x < 3500):
+        return False
+
+    # Y bounds (center ~ -320 mm)
+    if not (-2000 < y < 1500):
+        return False
+
+    # Z bounds (beam direction)
     if only_thin_section:
-        if not 11000 < z < 13500: is_inside = False
+        # thin plates upstream
+        if not (5200 < z < 8000):
+            return False
     else:
-        if not 11000 < z < 18200: is_inside = False
-    return is_inside 
+        # full TMS
+        if not (5200 < z < 12000):
+            return False
+
+    return True
 
 def inside_lar(x, y, z):
-    """ Returns true if x,y,z are inside the TMS
-    Currently rough estimates of the positions """
-    is_inside = True
-    if not -4500 < x < 3700: is_inside = False
-    if not -3200 < y < 1000: is_inside = False
-    if not 4100 < z < 9200: is_inside = False
-    return is_inside 
+    """
+    Returns True if (x,y,z) is inside the LAr volume
+    Units: mm
+    """
 
+    # X bounds (slightly wider than TMS)
+    if not (-4000 < x < 4000):
+        return False
+
+    # Y bounds
+    if not (-3000 < y < 1500):
+        return False
+
+    # Z bounds (ends before deep TMS)
+    if not (4000 < z < 9000):
+        return False
+
+    return True
 
 def region1(x):
     is_region1= True
@@ -135,139 +159,101 @@ def run(c, truth, outfilename, nmax=-1):
         
         # use PositionTMSStart, MomentumTMSStart, and PositionTMSEnd, truth level study
         for index, particle in enumerate(truth.PDG):
+
+            # =========================
+            # MUON (PDG = 13)
+            # =========================
             if truth.PDG[index] == 13:
-                n_true_muons+=1
+
+                n_true_muons += 1
+
                 x_start = truth.PositionLArStart[4*index+0]
                 y_start = truth.PositionLArStart[4*index+1]
                 z_start = truth.PositionLArStart[4*index+2]
+
                 x_end = truth.PositionTMSEnd[4*index+0]
                 y_end = truth.PositionTMSEnd[4*index+1]
                 z_end = truth.PositionTMSEnd[4*index+2]
+
                 x_start_tms = truth.PositionTMSStart[4*index+0]
                 z_start_tms = truth.PositionTMSStart[4*index+2]
 
-                if inside_lar(x_start,y_start,z_start) and inside_tms(x_end,y_end,z_end):
-                    if region1(x_start_tms) and region1(x_end):
-                        p_z = truth.MomentumTMSStart[4*index+2]
-                        p_x = truth.MomentumTMSStart[4*index+0]
-                        if p_z ==0: break
-                        m= p_x / p_z 
-                        b= x_start_tms-m*z_start_tms
-                        x_extrapolate =m*z_end +b
-                        signed_dist = x_end - x_extrapolate
-                        hist_signed_distance.Fill(signed_dist)
-                        hist_total_charge_id.Fill(truth.Muon_TrueKE)
-                        if signed_dist > 0 :
-                            hist_correct_charge_id.Fill(truth.Muon_TrueKE)
-                            n_correct+=1
-                        else:  
-                            hist_incorrect_charge_id.Fill(truth.Muon_TrueKE) 
-                
-                
-                
-                if inside_lar(x_start,y_start,z_start) and inside_tms(x_end,y_end,z_end):
-                    if region2(x_start_tms) and region2(x_end):
-                        p_z = truth.MomentumTMSStart[4*index+2]
-                        p_x = truth.MomentumTMSStart[4*index+0]
-                        if p_z ==0: break
-                        m= p_x / p_z 
-                        b= x_start_tms-m*z_start_tms
-                        x_extrapolate =m*z_end +b
-                        signed_dist = -(x_end - x_extrapolate)
-                        hist_signed_distance.Fill(signed_dist)
-                        hist_total_charge_id.Fill(truth.Muon_TrueKE)
-                        if signed_dist > 0 :
-                            hist_correct_charge_id.Fill(truth.Muon_TrueKE)
-                            n_correct+=1
-                        else:  
-                            hist_incorrect_charge_id.Fill(truth.Muon_TrueKE) 
-                
-                
-                
-                if inside_lar(x_start,y_start,z_start) and inside_tms(x_end,y_end,z_end):
-                    if region3(x_start_tms) and region3(x_end):
-                        p_z = truth.MomentumTMSStart[4*index+2]
-                        p_x = truth.MomentumTMSStart[4*index+0]
-                        if p_z ==0: break
-                        m= p_x / p_z 
-                        b= x_start_tms-m*z_start_tms
-                        x_extrapolate =m*z_end +b
-                        signed_dist = x_end - x_extrapolate
-                        hist_signed_distance.Fill(signed_dist)
-                        hist_total_charge_id.Fill(truth.Muon_TrueKE)
-                        if signed_dist > 0 :
-                            hist_correct_charge_id.Fill(truth.Muon_TrueKE)
-                            n_correct+=1
-                        else:  
-                            hist_incorrect_charge_id.Fill(truth.Muon_TrueKE) 
- 
+                if inside_lar(x_start, y_start, z_start) and inside_tms(x_end, y_end, z_end):
+
+                    p_z = truth.MomentumTMSStart[4*index+2]
+                    p_x = truth.MomentumTMSStart[4*index+0]
+
+                    if p_z == 0:
+                        continue
+
+                    # Straight-line slope
+                    m = p_x / p_z
+
+                    # Expected straight trajectory
+                    x_extrapolate = x_start_tms + m * (z_end - z_start_tms)
+
+                    # Raw deviation
+                    delta_x = x_end - x_extrapolate
+
+                    # SIGNED DISTANCE (physics-based)
+                    signed_dist = delta_x   # mu- should bend one consistent way
+
+                    hist_signed_distance.Fill(signed_dist)
+                    hist_total_charge_id.Fill(truth.Muon_TrueKE)
+
+                    if signed_dist > 0:
+                        hist_correct_charge_id.Fill(truth.Muon_TrueKE)
+                        n_correct += 1
+                    else:
+                        hist_incorrect_charge_id.Fill(truth.Muon_TrueKE)
+
+
+            # =========================
+            # ANTI-MUON (PDG = -13)
+            # =========================
             if truth.PDG[index] == -13:
+
                 x_start = truth.PositionLArStart[4*index+0]
                 y_start = truth.PositionLArStart[4*index+1]
                 z_start = truth.PositionLArStart[4*index+2]
+
                 x_end = truth.PositionTMSEnd[4*index+0]
                 y_end = truth.PositionTMSEnd[4*index+1]
                 z_end = truth.PositionTMSEnd[4*index+2]
+
                 x_start_tms = truth.PositionTMSStart[4*index+0]
                 z_start_tms = truth.PositionTMSStart[4*index+2]
 
-                if inside_lar(x_start,y_start,z_start) and inside_tms(x_end,y_end,z_end):
-                    if region1(x_start_tms) and region1(x_end):
-                        p_z = truth.MomentumTMSStart[4*index+2]
-                        p_x = truth.MomentumTMSStart[4*index+0]
-                        if p_z ==0: break
-                        m= p_x / p_z 
-                        b= x_start_tms-m*z_start_tms
-                        x_extrapolate =m*z_end +b
-                        signed_dist = x_end - x_extrapolate
-                        hist_signed_distance_antimuon.Fill(signed_dist)
-                        hist_total_charge_id_antimuon.Fill(truth.Muon_TrueKE)
-                        if signed_dist < 0 :
-                            hist_correct_charge_id_antimuon.Fill(truth.Muon_TrueKE)
-                            n_correct+=1
-                        else:  
-                            hist_incorrect_charge_id_antimuon.Fill(truth.Muon_TrueKE) 
-                
-                
-                
-                if inside_lar(x_start,y_start,z_start) and inside_tms(x_end,y_end,z_end):
-                    if region2(x_start_tms) and region2(x_end):
-                        p_z = truth.MomentumTMSStart[4*index+2]
-                        p_x = truth.MomentumTMSStart[4*index+0]
-                        
-                        if p_z ==0: break
-                        m= p_x / p_z 
-                        b= x_start_tms-m*z_start_tms
-                        x_extrapolate =m*z_end +b
-                        signed_dist = -(x_end - x_extrapolate)
-                        hist_signed_distance_antimuon.Fill(signed_dist)
-                        hist_total_charge_id_antimuon.Fill(truth.Muon_TrueKE)
-                        if signed_dist < 0 :
-                            hist_correct_charge_id_antimuon.Fill(truth.Muon_TrueKE)
-                            n_correct+=1
-                        else:  
-                            hist_incorrect_charge_id_antimuon.Fill(truth.Muon_TrueKE) 
-                
-                
-                
-                if inside_lar(x_start,y_start,z_start) and inside_tms(x_end,y_end,z_end):
-                    if region3(x_start_tms) and region3(x_end):
-                        p_z = truth.MomentumTMSStart[4*index+2]
-                        p_x = truth.MomentumTMSStart[4*index+0]
-                        if p_z ==0: break
-                        m= p_x / p_z 
-                        b= x_start_tms-m*z_start_tms
-                        x_extrapolate =m*z_end +b
-                        signed_dist = x_end - x_extrapolate
-                        hist_signed_distance_antimuon.Fill(signed_dist)
-                        hist_total_charge_id_antimuon.Fill(truth.Muon_TrueKE)
-                        if signed_dist < 0 :
-                            hist_correct_charge_id_antimuon.Fill(truth.Muon_TrueKE)
-                            n_correct+=1
-                        else:  
-                            hist_incorrect_charge_id_antimuon.Fill(truth.Muon_TrueKE) 
- 
-    
+                if inside_lar(x_start, y_start, z_start) and inside_tms(x_end, y_end, z_end):
+
+                    p_z = truth.MomentumTMSStart[4*index+2]
+                    p_x = truth.MomentumTMSStart[4*index+0]
+
+                    if p_z == 0:
+                        continue
+
+                    # Straight-line slope
+                    m = p_x / p_z
+
+                    # Expected straight trajectory
+                    x_extrapolate = x_start_tms + m * (z_end - z_start_tms)
+
+                    # Raw deviation
+                    delta_x = x_end - x_extrapolate
+
+                    # SIGNED DISTANCE (flip for antimuon)
+                    signed_dist = -delta_x
+
+                    hist_signed_distance_antimuon.Fill(signed_dist)
+                    hist_total_charge_id_antimuon.Fill(truth.Muon_TrueKE)
+
+                    if signed_dist > 0:
+                        hist_correct_charge_id_antimuon.Fill(truth.Muon_TrueKE)
+                        n_correct += 1
+                    else:
+                        hist_incorrect_charge_id_antimuon.Fill(truth.Muon_TrueKE)
+        
+            
    
     hist_correct_charge_id_percentage.Divide(hist_correct_charge_id,hist_total_charge_id)
     hist_correct_charge_id_percentage_antimuon.Divide(hist_correct_charge_id_antimuon,hist_total_charge_id_antimuon)       
